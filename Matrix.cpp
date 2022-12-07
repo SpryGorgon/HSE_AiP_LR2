@@ -29,7 +29,7 @@ public:
 	Matrix()
 	{
 		data = nullptr;
-		shape = { 0,0 };
+		shape[0] = 0; shape[1] = 0;
 	}
 	Matrix(int s1)
 	{
@@ -53,7 +53,6 @@ public:
 			i++;
 		}
 	}
-
 	Matrix(std::initializer_list<std::initializer_list<T>> in)
 	{
 		if (in.size() == 0) throw runtime_error("array is empty");
@@ -75,6 +74,11 @@ public:
 		shape[0] = other.shape[0]; shape[1] = other.shape[1];
 		init_data(shape[0], shape[1]);
 		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = other.data[i][j];
+	}
+	~Matrix()
+	{
+		for (int i = 0; i < shape[0]; i++) delete[] data[i];
+		delete[] data;
 	}
 
 	void init_data(int s1, int s2)
@@ -129,7 +133,7 @@ public:
 			os << "[";
 			for (int j = 0; j < o.shape[1]; j++)
 			{
-				os << o(i,j) << (j == (o.shape[1] - 1) ? "]" : ", ");
+				os << o(i, j) << (j == (o.shape[1] - 1) ? "]" : ", ");
 			}
 			os << (i == (o.shape[0] - 1) ? "]" : ",\n");
 		}
@@ -145,25 +149,37 @@ public:
 		if (i<0 || j<0 || i>shape[0] || j>shape[1]) std::cerr << "Out of Range error \n";
 		return data[i][j];
 	}
-	Matrix& operator + (const Matrix& other) const
+	template < typename NewT >
+	Matrix& operator + (const Matrix<NewT>& other) const
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
 		Matrix res(shape[0], shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] + other.data[i][j];
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] + T(other(i,j));
 		return res;
 	}
-	Matrix& operator - (const Matrix& other) const
+	template < typename NewT >
+	Matrix& operator - (const Matrix<NewT>& other) const
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
 		Matrix res(shape[0], shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] - other.data[i][j];
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] - T(other(i,j));
 		return res;
 	}
-	Matrix& operator * (const Matrix& other) const
+	template < typename NewT >
+	Matrix& operator * (const Matrix<NewT>& other) const
 	{
 		if (shape[1] != other.shape[0]) throw runtime_error("invalid shapes");
 		Matrix res(shape[0], other.shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < other.shape[1]; j++) for (int k = 0; k < shape[1]; k++) res(i, j) = res(i, j) + data[i][k] * other.data[k][j];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			for (int j = 0; j < other.shape[1]; j++)
+			{
+				for (int k = 0; k < shape[1]; k++)
+				{
+					res(i, j) = res(i, j) + data[i][k] * T(other(k, j));
+				}
+			}
+		}
 		return res;
 	}
 	Matrix& operator * (const double other) const
@@ -176,15 +192,17 @@ public:
 	{
 		return b * a;
 	}
-	void operator += (const Matrix& other)
+	template < typename NewT >
+	void operator += (const Matrix<NewT>& other)
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] += other.data[i][j];
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] += T(other(i,j));
 	}
-	void operator -= (const Matrix& other)
+	template < typename NewT >
+	void operator -= (const Matrix<NewT>& other)
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] -= other.data[i][j];
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] -= T(other(i,j));
 	}
 	void operator *= (const double other)
 	{
@@ -213,10 +231,10 @@ public:
 		//delete[] shape;
 		init_data(other.shape[0], other.shape[1]);
 		shape[0] = other.shape[0]; shape[1] = other.shape[1];
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = T(other(i,j));
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = T(other(i, j));
 		return *this;
 	}
-	/*template < typename NewT >
+	template < typename NewT >
 	Matrix(std::initializer_list<NewT> list)
 	{
 		if (list.size() == 0) throw runtime_error("array is empty");
@@ -228,7 +246,7 @@ public:
 			data[i][0] = T(e);
 			i++;
 		}
-	}*/
+	}
 
 	template < typename NewT >
 	Matrix(std::initializer_list<std::initializer_list<NewT>> in)
@@ -248,17 +266,6 @@ public:
 	}
 };
 
-//Matrix::operator int() { return Matrix<int>(*this); }
-
-
-//template <typename other>
-//operator Matrix<other>()
-//{
-//	Matrix<other> res(shape[0], shape[1]);
-//	for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = (other)data[i][j];
-//	return res;
-//}
-
 using MyType = int;
 
 int main()
@@ -268,38 +275,63 @@ int main()
 	cout.tie(0);
 	Matrix<MyType> m1(4); // матрица вида: 4 строки и 1 столбец
 	Matrix<MyType> m2(4, 6); // матрица вида: 4 строки и 6 столбцов
-	Matrix<int> m5 = { { {1, 2, 3}, {4, 5, 6} } };
-	Matrix<int> m6 = { { {1, 2, 3, 4, 5, 6} } };
-	Matrix<int> m7 = { { 1,2,3,4,5,6 } };
-	Matrix<int> m8 = { { {1},{2},{3},{4},{5},{6} } };
+	Matrix<int> m5 = { {1, 2, 3}, {4, 5, 6} };
+	Matrix<int> m6 = { {1, 2, 3, 4, 5, 6} };
+	Matrix<int> m7 = { 1,2,3,4,5,6 };
+	Matrix<int> m8 = { {1},{2},{3},{4},{5},{6} };
 
 	// Конструктор копирования:
 	Matrix<MyType> m3(m1);
 
+	cout << "m1" << endl << m1 << endl << "m2" << endl << m2 << endl << "m3" << endl << m3 << endl << "m5" << endl << m5 << endl;
+	cout << "m6" << endl << m6 << endl << "m7" << endl << m7 << endl << "m8" << endl << m8 << endl;
+
 	// Оператор приваивания:
 	m1 = m2;
+	cout << "m1" << endl << m1 << endl << "m2" << endl << m2 << endl;
 
 	// Перемещающий конструктор
 	Matrix<MyType> m4(std::move(m2));
+	cout << "m4" << endl << m4 << endl << "m2" << endl << m2 << endl;
 
 	Matrix<int> m = { { {1, 2, 3}, {4, 5, 6} } };
 	int val = m(0, 2); // =&gt; 3 т.к. это 1-ая строка, 3-ий элемент
 	m(0, 2) = 7; // теперь 1-ая строка, 3-ий элемент стал равен 7
+	cout << "m" << endl << m << endl << "val" << endl << val << endl;
 
 	// int список инициализации в double матрицу
 	Matrix<double> m_d = { {1, 2}, {3, 4}, {5, 6} };
+	cout << "m_d" << endl << m_d << endl;
 	// double список инициализации в int матрицу
 	Matrix<int> m_i = { {1.1, 2.2, 3.3}, {4.4, 5.5, 6.6} };
+	cout << "m_i" << endl << m_i << endl;
 	// инициализация short матрицы с помощью double матрицы
 	Matrix<short> m_s = m_d;
+	cout << "m_s" << endl << m_s << endl;
 	// присваивание int матрицы в short матрицу
 	m_s = m_i;
+	cout << "m_s" << endl << m_s << endl;
 	// Арифметические операции между матрицами с разными типами:
 	m_s += m_i;
+	cout << "m_s" << endl << m_s << endl;
 	m_s -= m_i;
+	cout << "m_s" << endl << m_s << endl;
 	m_s *= 3.14;
-	m_s + m_i - m_s;
-	m_d* m_i;
-	m_d * 0;
-	3.14 * m_i;
+	cout << "m_s" << endl << m_s << endl;
+	{
+		auto x = m_s + m_i - m_s;
+		cout << "ops1" << endl << x << endl;
+	}
+	{
+		auto x = m_d * m_i;
+		cout << "ops2" << endl << x << endl;
+	}
+	{
+		auto x = m_d * 0;
+		cout << "ops3" << endl << x << endl;
+	}
+	{
+		auto x = 3.14 * m_i;
+		cout << "ops4" << endl << x << endl;
+	}
 }

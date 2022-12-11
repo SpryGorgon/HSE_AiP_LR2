@@ -1,23 +1,9 @@
 ﻿#include <iostream>
 #include <string>
-#include <vector>
-#include <cmath>
-#include <algorithm>
-#include <cstring>
-#include <queue>
-#include <list>
-#include <set>
-#include <map>
-#include <stack>
 #include <type_traits>
-#include <time.h>
-#include <stdio.h>
-#include <fstream>
+#include <exception>
 
 using namespace std;
-typedef long long ll;
-typedef long double ld;
-const int SEED = 1e9 + 7 + 7e7;
 
 template<typename T>
 class Matrix
@@ -33,47 +19,37 @@ public:
 	}
 	Matrix(int s1)
 	{
-		init_data(s1, 1);
 		shape[0] = s1; shape[1] = 1;
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
 	}
 	Matrix(int s1, int s2)
 	{
-		init_data(s1, s2);
 		shape[0] = s1; shape[1] = s2;
-	}
-	/*Matrix(std::initializer_list<T> list)
-	{
-		if (list.size() == 0) throw runtime_error("array is empty");
-		init_data(list.size(), 1);
-		shape[0] = list.size(); shape[1] = 1;
-		int i = 0;
-		for (T e : list)
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
 		{
-			data[i][0] = e;
-			i++;
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
 		}
 	}
-	Matrix(std::initializer_list<std::initializer_list<T>> in)
-	{
-		if (in.size() == 0) throw runtime_error("array is empty");
-		init_data(in.size(), (*in.begin()).size());
-		shape[0] = in.size(); shape[1] = (*in.begin()).size();
-		int i = 0;
-		for (auto list : in) {
-			int j = 0;
-			for (auto e : list) {
-				data[i][j] = e;
-				j++;
-			}
-			i++;
-		}
-	}*/
 
 	Matrix(const Matrix& other)
 	{
 		shape[0] = other.shape[0]; shape[1] = other.shape[1];
-		init_data(shape[0], shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = other.data[i][j];
+
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
+
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = T(other(i,j));
 	}
 	~Matrix()
 	{
@@ -81,22 +57,16 @@ public:
 		delete[] data;
 	}
 
-	void init_data(int s1, int s2)
-	{
-		T** data = new T * [s1];
-		for (int i = 0; i < s1; i++)
-		{
-			data[i] = new T[s2];
-			for (int j = 0; j < s2; j++) data[i][j] = T();
-		}
-		this->data = data;
-	}
-
-	Matrix& operator = (const std::initializer_list<T> list)
+	Matrix& operator = (const initializer_list<T> list)
 	{
 		delete[] data;
-		init_data(list.size(), 1);
-		shape = { list.size(),1 };
+		shape[0] = list.size(); shape[1] = 1;
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
 		int i = 0;
 		for (T e : list)
 		{
@@ -109,16 +79,22 @@ public:
 	Matrix& operator = (const Matrix& other)
 	{
 		delete[] data;
-		init_data(other.shape[0], other.shape[1]);
 		shape[0] = other.shape[0]; shape[1] = other.shape[1];
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = other.data[i][j];
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
+
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = T(other(i,j));
 		return *this;
 	}
 
 	Matrix& operator=(Matrix&& other) {
 		if (this != &other) {
 			delete[]  data;
-			delete[] shape;
+			shape[0] = 0; shape[1] = 0;
 			swap(data, other.data);
 			swap(shape, other.shape);
 		}
@@ -139,32 +115,37 @@ public:
 		}
 		return os;
 	}
+
 	T& operator () (const int i, const int j)
 	{
-		if (i<0 || j<0 || i>shape[0] || j>shape[1]) std::cerr << "Out of Range error \n";
+		if (i<0 || j<0 || i>shape[0] || j>shape[1]) throw out_of_range("Out of range");
 		return data[i][j];
 	}
 
-	const T& operator () (const int i, const int j) const {
-		if (i<0 || j<0 || i>shape[0] || j>shape[1]) std::cerr << "Out of Range error \n";
+	const T& operator () (const int i, const int j) const
+	{
+		if (i<0 || j<0 || i>shape[0] || j>shape[1]) throw out_of_range("Out of range");
 		return data[i][j];
 	}
+
 	template < typename NewT >
 	Matrix& operator + (const Matrix<NewT>& other) const
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
 		Matrix res(shape[0], shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] + T(other(i,j));
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] + T(other(i, j));
 		return res;
 	}
+
 	template < typename NewT >
 	Matrix& operator - (const Matrix<NewT>& other) const
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
 		Matrix res(shape[0], shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] - T(other(i,j));
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] - T(other(i, j));
 		return res;
 	}
+
 	template < typename NewT >
 	Matrix& operator * (const Matrix<NewT>& other) const
 	{
@@ -182,32 +163,38 @@ public:
 		}
 		return res;
 	}
+
 	Matrix& operator * (const double other) const
 	{
 		Matrix res(*this);
 		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = data[i][j] * other;
 		return res;
 	}
+
 	friend Matrix& operator * (const double a, const Matrix& b)
 	{
 		return b * a;
 	}
+
 	template < typename NewT >
 	void operator += (const Matrix<NewT>& other)
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] += T(other(i,j));
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] += T(other(i, j));
 	}
+
 	template < typename NewT >
 	void operator -= (const Matrix<NewT>& other)
 	{
 		if (shape[0] != other.shape[0] || shape[1] != other.shape[1]) throw runtime_error("invalid shapes");
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] -= T(other(i,j));
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] -= T(other(i, j));
 	}
+
 	void operator *= (const double other)
 	{
 		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] *= other;
 	}
+
 	template < typename NewT >
 	operator Matrix< NewT >()
 	{
@@ -220,7 +207,7 @@ public:
 	Matrix(const Matrix< NewT >& other)
 	{
 		Matrix res(other.shape[0], other.shape[1]);
-		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = T(other.data[i][j]);
+		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) res(i, j) = T(other(i,j));
 	}
 
 	template < typename NewT >
@@ -228,18 +215,30 @@ public:
 	{
 		for (int i = 0; i < shape[0]; i++) delete[] data[i];
 		delete[] data;
-		//delete[] shape;
-		init_data(other.shape[0], other.shape[1]);
 		shape[0] = other.shape[0]; shape[1] = other.shape[1];
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
+
 		for (int i = 0; i < shape[0]; i++) for (int j = 0; j < shape[1]; j++) data[i][j] = T(other(i, j));
 		return *this;
 	}
+
 	template < typename NewT >
-	Matrix(std::initializer_list<NewT> list)
+	Matrix(initializer_list<NewT> list)
 	{
 		if (list.size() == 0) throw runtime_error("array is empty");
-		init_data(list.size(), 1);
 		shape[0] = list.size(); shape[1] = 1;
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
+
 		int i = 0;
 		for (NewT e : list)
 		{
@@ -249,11 +248,17 @@ public:
 	}
 
 	template < typename NewT >
-	Matrix(std::initializer_list<std::initializer_list<NewT>> in)
+	Matrix(initializer_list<initializer_list<NewT>> in)
 	{
 		if (in.size() == 0) throw runtime_error("array is empty");
-		init_data(in.size(), (*in.begin()).size());
 		shape[0] = in.size(); shape[1] = (*in.begin()).size();
+		data = new T * [shape[0]];
+		for (int i = 0; i < shape[0]; i++)
+		{
+			data[i] = new T[shape[1]];
+			for (int j = 0; j < shape[1]; j++) data[i][j] = T();
+		}
+
 		int i = 0;
 		for (auto list : in) {
 			int j = 0;
